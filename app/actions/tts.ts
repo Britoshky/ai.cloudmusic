@@ -1,6 +1,16 @@
 "use server";
 
-const API_URL = process.env.NEXT_PUBLIC_TTS_API_URL || "http://localhost:5000";
+// Asegurar que la URL tenga protocolo
+function getApiUrl() {
+  const url = process.env.NEXT_PUBLIC_TTS_API_URL || "http://localhost:5000";
+  // Si no tiene http:// o https://, agregarlo
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `http://${url}`;
+  }
+  return url;
+}
+
+const API_URL = getApiUrl();
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {

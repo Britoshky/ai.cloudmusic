@@ -7,10 +7,11 @@ const API_URL = process.env.NEXT_PUBLIC_TTS_API_URL || 'http://localhost:5000';
 interface Voice {
   id: string;
   name: string;
-  description: string;
-  language: string;
-  duration: number;
+  description?: string;
+  language?: string;
+  duration?: number;
   filename: string;
+  type?: string;
 }
 
 interface VoiceGalleryProps {
@@ -18,7 +19,8 @@ interface VoiceGalleryProps {
 }
 
 export default function VoiceGallery({ onSelectVoice }: VoiceGalleryProps) {
-  const [voices, setVoices] = useState<Voice[]>([]);
+  const [userVoices, setUserVoices] = useState<Voice[]>([]);
+  const [preloadedVoices, setPreloadedVoices] = useState<Voice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newVoice, setNewVoice] = useState({
@@ -36,7 +38,8 @@ export default function VoiceGallery({ onSelectVoice }: VoiceGalleryProps) {
     try {
       const response = await fetch(`${API_URL}/voices`);
       const data = await response.json();
-      setVoices(data);
+      setUserVoices(data.user_voices || []);
+      setPreloadedVoices(data.preloaded_voices || []);
     } catch (error) {
       console.error('Error loading voices:', error);
     } finally {
@@ -156,41 +159,81 @@ export default function VoiceGallery({ onSelectVoice }: VoiceGalleryProps) {
         </form>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {voices.length === 0 ? (
-          <p className="text-gray-500 col-span-full text-center py-8">
-            No hay voces guardadas. Agrega tu primera voz con audio de 3-10 segundos para mejor calidad.
-          </p>
-        ) : (
-          voices.map((voice) => (
-            <div
-              key={voice.id}
-              className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <h3 className="font-bold text-lg text-black mb-1">{voice.name}</h3>
-              <p className="text-sm text-gray-600 mb-2">{voice.description}</p>
-              <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
-                <span>🌍 {voice.language}</span>
-                <span>⏱️ {voice.duration}s</span>
-              </div>
-              <div className="flex gap-2">
+      {/* Voces Pre-cargadas */}
+      {preloadedVoices.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold text-black mb-3 flex items-center">
+            <span className="mr-2">🎙️</span>
+            Locutores Chilenos Pre-cargados
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {preloadedVoices.map((voice) => (
+              <div
+                key={voice.id}
+                className="border-2 border-green-200 bg-green-50 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <h4 className="font-bold text-lg text-black mb-1">{voice.name}</h4>
+                <p className="text-xs text-gray-600 mb-2">✨ Voz pre-cargada</p>
+                <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                  <span>🇨🇱 Chile</span>
+                  <span>📁 {voice.filename}</span>
+                </div>
                 <button
                   onClick={() => onSelectVoice(voice.id)}
-                  className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition-colors"
+                  className="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm transition-colors font-semibold"
                 >
-                  Usar
-                </button>
-                <button
-                  onClick={() => handleDeleteVoice(voice.id)}
-                  className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition-colors"
-                >
-                  🗑️
+                  Usar esta voz
                 </button>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Voces de Usuarios */}
+      {userVoices.length > 0 && (
+        <div>
+          <h3 className="text-xl font-semibold text-black mb-3 flex items-center">
+            <span className="mr-2">👤</span>
+            Mis Voces Guardadas
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userVoices.map((voice) => (
+              <div
+                key={voice.id}
+                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <h4 className="font-bold text-lg text-black mb-1">{voice.name}</h4>
+                <p className="text-sm text-gray-600 mb-2">{voice.description}</p>
+                <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                  <span>🌍 {voice.language}</span>
+                  <span>⏱️ {voice.duration}s</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onSelectVoice(voice.id)}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition-colors"
+                  >
+                    Usar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteVoice(voice.id)}
+                    className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition-colors"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {preloadedVoices.length === 0 && userVoices.length === 0 && !loading && (
+        <p className="text-gray-500 text-center py-8">
+          No hay voces disponibles. Agrega tu primera voz con audio de 3-10 segundos para mejor calidad.
+        </p>
+      )}
     </div>
   );
 }
