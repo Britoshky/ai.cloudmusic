@@ -69,7 +69,7 @@ export default function TTSInterface() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <VoiceGallery onSelectVoice={handleVoiceSelect} />
+      <VoiceGallery onSelectVoice={handleVoiceSelect} selectedVoiceId={selectedVoiceId} />
       
       <div className="bg-white rounded-lg shadow-lg p-8">
         <h1 className="text-3xl font-bold mb-6 text-center text-black">
