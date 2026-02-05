@@ -6,7 +6,7 @@
   "port": 3004,
   "domains": ["ai.cloudmusic.cl"],
   "environmentVariables": {
-    "NEXT_PUBLIC_TTS_API_URL": "https://api-voz.cloudmusic.cl",
+    "TTS_BACKEND_URL": "http://192.168.30.188:5000",
     "NODE_ENV": "production"
   }
 }

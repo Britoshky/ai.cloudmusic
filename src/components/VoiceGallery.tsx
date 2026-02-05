@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_TTS_API_URL || 'http://localhost:5000';
+// Usar proxy interno de Next.js en producción, localhost en desarrollo
+const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+  ? '/api/tts' 
+  : 'http://localhost:5000';
 
 interface Voice {
   id: string;

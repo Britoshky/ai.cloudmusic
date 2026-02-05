@@ -1,13 +1,9 @@
 "use server";
 
-// Asegurar que la URL tenga protocolo
+// Usar proxy interno de Next.js
 function getApiUrl() {
-  const url = process.env.NEXT_PUBLIC_TTS_API_URL || "http://localhost:5000";
-  // Si no tiene http:// o https://, agregarlo
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return `http://${url}`;
-  }
-  return url;
+  // En server actions, usar directamente la IP local
+  return process.env.TTS_BACKEND_URL || "http://192.168.30.188:5000";
 }
 
 const API_URL = getApiUrl();
