@@ -95,3 +95,79 @@ export async function useVoiceFromGallery(
 
   return await response.blob();
 }
+
+// Obtener voces disponibles
+export async function getVoices() {
+  try {
+    const response = await fetch(`${API_URL}/voices`);
+    
+    if (!response.ok) {
+      throw new Error('Error obteniendo voces');
+    }
+    
+    const data = await response.json();
+    return {
+      success: true,
+      user_voices: data.user_voices || [],
+      preloaded_voices: data.preloaded_voices || [],
+    };
+  } catch (error) {
+    console.error("Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+      user_voices: [],
+      preloaded_voices: [],
+    };
+  }
+}
+
+// Agregar nueva voz
+export async function addVoice(formData: FormData) {
+  try {
+    const response = await fetch(`${API_URL}/voices`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error agregando voz');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      voice: data,
+    };
+  } catch (error) {
+    console.error("Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
+  }
+}
+
+// Eliminar voz
+export async function deleteVoice(voiceId: string) {
+  try {
+    const response = await fetch(`${API_URL}/voices/${voiceId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Error eliminando voz');
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
+  }
+}

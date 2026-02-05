@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-// Usar proxy interno de Next.js en producción, localhost en desarrollo
-const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-  ? '/api/tts' 
-  : 'http://localhost:5000';
+import { getVoices, addVoice, deleteVoice } from '@/app/actions/tts';
 
 interface Voice {
   id: string;
@@ -41,10 +37,11 @@ export default function VoiceGallery({ onSelectVoice, selectedVoiceId }: VoiceGa
 
   const loadVoices = async () => {
     try {
-      const response = await fetch(`${API_URL}/voices`);
-      const data = await response.json();
-      setUserVoices(data.user_voices || []);
-      setPreloadedVoices(data.preloaded_voices || []);
+      const result = await getVoices();
+      if (result.success) {
+        setUserVoices(result.user_voices);
+        setPreloadedVoices(result.preloaded_voices);
+      }
     } catch (error) {
       console.error('Error loading voices:', error);
     } finally {
@@ -63,12 +60,9 @@ export default function VoiceGallery({ onSelectVoice, selectedVoiceId }: VoiceGa
     formData.append('language', newVoice.language);
 
     try {
-      const response = await fetch(`${API_URL}/voices`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
+      const result = await addVoice(formData);
+      
+      if (result.success) {
         setShowAddForm(false);
         setNewVoice({ name: '', description: '', language: 'es', audioFile: null });
         loadVoices();
@@ -82,10 +76,10 @@ export default function VoiceGallery({ onSelectVoice, selectedVoiceId }: VoiceGa
     if (!confirm('¿Eliminar esta voz?')) return;
 
     try {
-      await fetch(`${API_URL}/voices/${voiceId}`, {
-        method: 'DELETE',
-      });
-      loadVoices();
+      const result = await deleteVoice(voiceId);
+      if (result.success) {
+        loadVoices();
+      }
     } catch (error) {
       console.error('Error deleting voice:', error);
     }
