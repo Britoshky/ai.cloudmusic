@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 
+const backendUrl =
+  process.env.TTS_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_TTS_API_URL ||
+  "http://localhost:5000";
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
@@ -11,7 +16,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/tts/:path*',
-        destination: 'http://localhost:5000/:path*',
+        destination: `${backendUrl}/:path*`,
       },
     ];
   },
