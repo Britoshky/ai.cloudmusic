@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
-const backendUrl =
+const rawBackendUrl =
   process.env.TTS_BACKEND_URL ||
   process.env.NEXT_PUBLIC_TTS_API_URL ||
   "http://localhost:5000";
+const backendUrl = rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
   experimental: {

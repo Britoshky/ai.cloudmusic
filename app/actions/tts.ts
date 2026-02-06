@@ -1,10 +1,12 @@
 "use server";
 
 // URL del backend TTS (configurable por entorno)
-const API_URL =
+const rawBackendUrl =
   process.env.TTS_BACKEND_URL ||
   process.env.NEXT_PUBLIC_TTS_API_URL ||
   "http://localhost:5000";
+
+const API_URL = rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {
