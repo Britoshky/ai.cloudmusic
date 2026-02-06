@@ -6,7 +6,7 @@
   "port": 3004,
   "domains": ["ai.cloudmusic.cl"],
   "environmentVariables": {
-    "TTS_BACKEND_URL": "http://192.168.30.188:5000",
+    "TTS_BACKEND_URL": "http://localhost:5000",
     "NODE_ENV": "production"
   }
 }

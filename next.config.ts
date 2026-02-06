@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/tts/:path*',
-        destination: 'http://192.168.30.188:5000/:path*',
+        destination: 'http://localhost:5000/:path*',
       },
     ];
   },
