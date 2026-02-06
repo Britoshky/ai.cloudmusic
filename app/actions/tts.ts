@@ -1,12 +1,7 @@
 "use server";
 
-// Usar proxy interno de Next.js
-function getApiUrl() {
-  // En server actions, usar directamente la IP local
-  return process.env.TTS_BACKEND_URL || "http://192.168.30.188:5000";
-}
-
-const API_URL = getApiUrl();
+// URL fija del backend TTS (mismo servidor local)
+const API_URL = "http://192.168.30.188:5000";
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {
