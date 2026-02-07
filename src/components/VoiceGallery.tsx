@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getVoices, addVoice, deleteVoice } from '@/app/actions/tts';
+import { Button, Card, CardBody, Input, Select, SelectItem, Accordion, AccordionItem, Chip } from '@nextui-org/react';
 
 interface Voice {
   id: string;
@@ -86,210 +87,249 @@ export default function VoiceGallery({ onSelectVoice, selectedVoiceId }: VoiceGa
   };
 
   if (loading) {
-    return <div className="text-center py-4 text-gray-600">Cargando voces...</div>;
+    return (
+      <Card className="mb-6 backdrop-blur-xl border border-primary-500/20">
+        <CardBody className="text-center py-8">
+          <div className="animate-pulse flex items-center justify-center gap-2">
+            <span className="text-2xl">⚙️</span>
+            <span className="text-default-500">Cargando voces...</span>
+          </div>
+        </CardBody>
+      </Card>
+    );
   }
 
   const selectedVoice = [...preloadedVoices, ...userVoices].find(v => v.id === selectedVoiceId);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-black">🎙️ Seleccionar Voz</h2>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          {showAddForm ? '✕ Cancelar' : '+ Agregar Voz'}
-        </button>
-      </div>
-
-      {showAddForm && (
-        <form onSubmit={handleAddVoice} className="mb-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-          <h3 className="text-lg font-semibold text-black mb-4">➕ Agregar Nueva Voz</h3>
-          <div className="grid gap-4">
-            <input
-              type="text"
-              placeholder="Nombre de la voz"
-              value={newVoice.name}
-              onChange={(e) => setNewVoice({ ...newVoice, name: e.target.value })}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-black focus:border-blue-500 focus:outline-none"
-              required
-            />
-            <input
-              type="text"
-              placeholder="Descripción (opcional)"
-              value={newVoice.description}
-              onChange={(e) => setNewVoice({ ...newVoice, description: e.target.value })}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-black focus:border-blue-500 focus:outline-none"
-            />
-            <select
-              value={newVoice.language}
-              onChange={(e) => setNewVoice({ ...newVoice, language: e.target.value })}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-black focus:border-blue-500 focus:outline-none"
-            >
-              <option value="es">🇪🇸 Español</option>
-              <option value="en">🇺🇸 English</option>
-              <option value="fr">🇫🇷 Français</option>
-              <option value="de">🇩🇪 Deutsch</option>
-              <option value="it">🇮🇹 Italiano</option>
-              <option value="pt">🇧🇷 Português</option>
-              <option value="pl">🇵🇱 Polski</option>
-              <option value="tr">🇹🇷 Türkçe</option>
-              <option value="ru">🇷🇺 Русский</option>
-              <option value="nl">🇳🇱 Nederlands</option>
-              <option value="cs">🇨🇿 Čeština</option>
-              <option value="ar">🇸🇦 العربية</option>
-              <option value="zh-cn">🇨🇳 中文</option>
-              <option value="ja">🇯🇵 日本語</option>
-              <option value="hu">🇭🇺 Magyar</option>
-              <option value="ko">🇰🇷 한국어</option>
-            </select>
-            <div className="relative">
-              <input
-                type="file"
-                accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,.wma"
-                onChange={(e) => setNewVoice({ ...newVoice, audioFile: e.target.files?.[0] || null })}
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-black w-full focus:border-blue-500 focus:outline-none"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
-            >
-              💾 Guardar Voz
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Selector Principal de Voces Pre-cargadas */}
-      {preloadedVoices.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">
-            🎭 Locutores Profesionales de Chile
-          </label>
-          <div className="relative">
-            <select
-              value={selectedVoiceId || ''}
-              onChange={(e) => onSelectVoice(e.target.value)}
-              className="w-full px-4 py-3 text-lg border-2 border-green-300 rounded-lg text-black bg-gradient-to-r from-green-50 to-emerald-50 focus:border-green-500 focus:outline-none appearance-none cursor-pointer font-medium shadow-sm hover:shadow-md transition-all"
-            >
-              <option value="">Selecciona un locutor profesional...</option>
-              {preloadedVoices.map((voice) => (
-                <option key={voice.id} value={voice.id}>
-                  🎙️ {voice.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-          
-          {/* Vista previa de voz seleccionada */}
-          {selectedVoice && selectedVoice.type === 'preloaded' && (
-            <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-lg text-green-800">✓ {selectedVoice.name}</h4>
-                  <p className="text-sm text-green-600">🇨🇱 Locutor profesional chileno</p>
-                </div>
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 bg-green-600 text-white text-xs rounded-full font-semibold">
-                    PRE-CARGADO
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Voces de Usuarios - Colapsable */}
-      {userVoices.length > 0 && (
-        <div className="mt-6">
-          <button
-            onClick={() => setShowUserVoices(!showUserVoices)}
-            className="w-full flex items-center justify-between p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors mb-3"
+    <Card className="mb-6 backdrop-blur-xl border border-primary-500/20">
+      <CardBody className="p-8 space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent flex items-center gap-2">
+            <span>🎙️</span>
+            <span>Seleccionar Voz</span>
+          </h2>
+          <Button
+            color={showAddForm ? "danger" : "primary"}
+            variant="shadow"
+            onPress={() => setShowAddForm(!showAddForm)}
+            startContent={<span>{showAddForm ? '✕' : '+'}</span>}
           >
-            <span className="font-semibold text-black flex items-center gap-2">
-              👤 Mis Voces Guardadas ({userVoices.length})
-            </span>
-            <svg 
-              className={`w-5 h-5 text-gray-600 transition-transform ${showUserVoices ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          
-          {showUserVoices && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {userVoices.map((voice) => (
-                <div
-                  key={voice.id}
-                  className={`border-2 rounded-lg p-4 transition-all cursor-pointer ${
-                    selectedVoiceId === voice.id
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                  }`}
-                  onClick={() => onSelectVoice(voice.id)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-bold text-base text-black truncate flex-1">{voice.name}</h4>
-                    {selectedVoiceId === voice.id && (
-                      <span className="text-blue-600 text-xl ml-2">✓</span>
-                    )}
-                  </div>
-                  {voice.description && (
-                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">{voice.description}</p>
-                  )}
-                  <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
-                    <span className="bg-gray-100 px-2 py-1 rounded">{voice.language}</span>
-                    <span>⏱️ {voice.duration}s</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectVoice(voice.id);
-                      }}
-                      className={`flex-1 px-3 py-2 rounded text-xs transition-colors font-semibold ${
-                        selectedVoiceId === voice.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      }`}
-                    >
-                      {selectedVoiceId === voice.id ? '✓ Seleccionada' : 'Usar'}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteVoice(voice.id);
-                      }}
-                      className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs transition-colors"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            {showAddForm ? 'Cancelar' : 'Agregar Voz'}
+          </Button>
         </div>
-      )}
 
-      {preloadedVoices.length === 0 && userVoices.length === 0 && !loading && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-500 text-lg mb-2">No hay voces disponibles</p>
-          <p className="text-gray-400 text-sm">Agrega tu primera voz con audio de 3-10 segundos para mejor calidad</p>
-        </div>
-      )}
-    </div>
+        {showAddForm && (
+          <Card className="bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-2 border-primary-500/30">
+            <CardBody className="p-6 space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <span>➕</span>
+                <span>Agregar Nueva Voz</span>
+              </h3>
+              <form onSubmit={handleAddVoice} className="space-y-4">
+                <Input
+                  type="text"
+                  label="Nombre de la voz"
+                  placeholder="Ej: Mi voz personalizada"
+                  value={newVoice.name}
+                  onValueChange={(value) => setNewVoice({ ...newVoice, name: value })}
+                  isRequired
+                  classNames={{
+                    input: "text-slate-200",
+                    inputWrapper: "border-2 border-primary-500/30 bg-dark-900/50"
+                  }}
+                />
+                <Input
+                  type="text"
+                  label="Descripción"
+                  placeholder="Descripción opcional"
+                  value={newVoice.description}
+                  onValueChange={(value) => setNewVoice({ ...newVoice, description: value })}
+                  classNames={{
+                    input: "text-slate-200",
+                    inputWrapper: "border-2 border-primary-500/30 bg-dark-900/50"
+                  }}
+                />
+                <Select
+                  label="Idioma"
+                  selectedKeys={[newVoice.language]}
+                  onChange={(e) => setNewVoice({ ...newVoice, language: e.target.value })}
+                  classNames={{
+                    trigger: "border-2 border-primary-500/30 bg-dark-900/50",
+                    value: "text-slate-200"
+                  }}
+                >
+                  <SelectItem key="es" value="es">🇪🇸 Español</SelectItem>
+                  <SelectItem key="en" value="en">🇺🇸 English</SelectItem>
+                  <SelectItem key="fr" value="fr">🇫🇷 Français</SelectItem>
+                  <SelectItem key="de" value="de">🇩🇪 Deutsch</SelectItem>
+                  <SelectItem key="it" value="it">🇮🇹 Italiano</SelectItem>
+                  <SelectItem key="pt" value="pt">🇧🇷 Português</SelectItem>
+                  <SelectItem key="pl" value="pl">🇵🇱 Polski</SelectItem>
+                  <SelectItem key="tr" value="tr">🇹🇷 Türkçe</SelectItem>
+                  <SelectItem key="ru" value="ru">🇷🇺 Русский</SelectItem>
+                  <SelectItem key="nl" value="nl">🇳🇱 Nederlands</SelectItem>
+                  <SelectItem key="cs" value="cs">🇨🇿 Čeština</SelectItem>
+                  <SelectItem key="ar" value="ar">🇸🇦 العربية</SelectItem>
+                  <SelectItem key="zh-cn" value="zh-cn">🇨🇳 中文</SelectItem>
+                  <SelectItem key="ja" value="ja">🇯🇵 日本語</SelectItem>
+                  <SelectItem key="hu" value="hu">🇭🇺 Magyar</SelectItem>
+                  <SelectItem key="ko" value="ko">🇰🇷 한국어</SelectItem>
+                </Select>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold flex items-center gap-2">
+                    <span>🎵</span>
+                    <span>Archivo de audio (3-10 seg)</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,.wma"
+                    onChange={(e) => setNewVoice({ ...newVoice, audioFile: e.target.files?.[0] || null })}
+                    className="w-full px-4 py-3 border-2 border-primary-500/30 rounded-xl bg-dark-900/50 text-slate-200 focus:border-primary-500 focus:outline-none transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-600 file:text-white file:cursor-pointer hover:file:bg-primary-700"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  color="success"
+                  variant="shadow"
+                  className="w-full font-semibold"
+                  startContent={<span>💾</span>}
+                >
+                  Guardar Voz
+                </Button>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Selector Principal de Voces Pre-cargadas */}
+        {preloadedVoices.length > 0 && (
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold flex items-center gap-2">
+              <span>🎭</span>
+              <span>Locutores Profesionales de Chile</span>
+            </label>
+            <Select
+              label="Selecciona un locutor profesional"
+              selectedKeys={selectedVoiceId ? [selectedVoiceId] : []}
+              onChange={(e) => onSelectVoice(e.target.value)}
+              placeholder="Elige un locutor..."
+              classNames={{
+                trigger: "border-2 border-success-500/30 bg-gradient-to-r from-success-500/10 to-primary-500/10",
+                value: "text-slate-200 font-medium"
+              }}
+            >
+              {preloadedVoices.map((voice) => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  🎙️ {voice.name}
+                </SelectItem>
+              ))}
+            </Select>
+            
+            {/* Vista previa de voz seleccionada */}
+            {selectedVoice && selectedVoice.type === 'preloaded' && (
+              <Card className="bg-success-500/10 border-2 border-success-500/30">
+                <CardBody className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-lg text-success-300 flex items-center gap-2">
+                        <span>✓</span>
+                        <span>{selectedVoice.name}</span>
+                      </h4>
+                      <p className="text-sm text-success-400">🇨🇱 Locutor profesional chileno</p>
+                    </div>
+                    <Chip color="success" variant="flat" size="sm">
+                      PRE-CARGADO
+                    </Chip>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Voces de Usuarios - Accordion */}
+        {userVoices.length > 0 && (
+          <Accordion variant="bordered">
+            <AccordionItem
+              key="user-voices"
+              aria-label="Mis Voces Guardadas"
+              title={
+                <div className="flex items-center gap-2 font-semibold">
+                  <span>👤</span>
+                  <span>Mis Voces Guardadas</span>
+                  <Chip size="sm" color="primary" variant="flat">{userVoices.length}</Chip>
+                </div>
+              }
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pt-4">
+                {userVoices.map((voice) => (
+                  <Card
+                    key={voice.id}
+                    isPressable
+                    isHoverable
+                    onPress={() => onSelectVoice(voice.id)}
+                    className={`transition-all ${
+                      selectedVoiceId === voice.id
+                        ? 'border-2 border-primary-500 bg-primary-500/10'
+                        : 'border border-default-200'
+                    }`}
+                  >
+                    <CardBody className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-bold text-base truncate flex-1">{voice.name}</h4>
+                        {selectedVoiceId === voice.id && (
+                          <span className="text-primary-500 text-xl ml-2">✓</span>
+                        )}
+                      </div>
+                      {voice.description && (
+                        <p className="text-xs text-default-500 line-clamp-2">{voice.description}</p>
+                      )}
+                      <div className="flex justify-between items-center text-xs">
+                        <Chip size="sm" variant="flat">{voice.language}</Chip>
+                        <span className="text-default-400">⏱️ {voice.duration}s</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          color={selectedVoiceId === voice.id ? "primary" : "default"}
+                          variant={selectedVoiceId === voice.id ? "shadow" : "flat"}
+                          onPress={() => onSelectVoice(voice.id)}
+                          className="flex-1"
+                        >
+                          {selectedVoiceId === voice.id ? '✓ Seleccionada' : 'Usar'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          color="danger"
+                          variant="flat"
+                          isIconOnly
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteVoice(voice.id);
+                          }}
+                        >
+                          🗑️
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </AccordionItem>
+          </Accordion>
+        )}
+
+        {preloadedVoices.length === 0 && userVoices.length === 0 && !loading && (
+          <Card className="border-2 border-dashed border-default-300">
+            <CardBody className="text-center py-12">
+              <p className="text-default-500 text-lg mb-2">No hay voces disponibles</p>
+              <p className="text-default-400 text-sm">Agrega tu primera voz con audio de 3-10 segundos para mejor calidad</p>
+            </CardBody>
+          </Card>
+        )}
+      </CardBody>
+    </Card>
   );
 }

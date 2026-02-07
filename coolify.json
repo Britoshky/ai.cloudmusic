@@ -1,12 +1,12 @@
 {
   "name": "TTS Voice Cloning - Frontend",
-  "repository": "https://github.com/tu-usuario/tts-frontend",
+  "repository": "https://github.com/Britoshky/ai.cloudmusic.git",
   "buildCommand": "npm install && npm run build",
   "startCommand": "npm start",
   "port": 3004,
   "domains": ["ai.cloudmusic.cl"],
   "environmentVariables": {
-    "TTS_BACKEND_URL": "http://localhost:5000",
+    "NEXT_PUBLIC_TTS_API_URL": "http://192.168.30.254:5000",
     "NODE_ENV": "production"
   }
 }
