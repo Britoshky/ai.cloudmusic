@@ -26,6 +26,9 @@ export default function TTSInterface() {
   const [preloadedVoices, setPreloadedVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [usePreloadedVoice, setUsePreloadedVoice] = useState(false);
+  const [autoCorrect, setAutoCorrect] = useState(true);  // Activado por defecto
+  const [correctedText, setCorrectedText] = useState<string | null>(null);
+  const [changesCount, setChangesCount] = useState<number>(0);
 
   useEffect(() => {
     loadVoices();
@@ -46,11 +49,40 @@ export default function TTSInterface() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setCorrectedText(null);
+    setChangesCount(0);
 
     try {
       if (usePreloadedVoice && selectedVoiceId) {
         // Usar voz pre-definida
-        const blob = await useVoiceFromGallery(selectedVoiceId, text, language, temperature, speed);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/voices/${selectedVoiceId}/use`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            language,
+            temperature,
+            speed,
+            auto_correct: autoCorrect
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Error generando audio');
+        }
+
+        // Extraer info de corrección de headers
+        const textCorrected = response.headers.get('X-Text-Corrected');
+        if (textCorrected === 'true') {
+          const corrected = response.headers.get('X-Corrected-Text');
+          const changes = response.headers.get('X-Changes-Count');
+          if (corrected) setCorrectedText(corrected);
+          if (changes) setChangesCount(parseInt(changes));
+        }
+
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
       } else {
@@ -67,19 +99,29 @@ export default function TTSInterface() {
         formData.append('language', language);
         formData.append('temperature', temperature.toString());
         formData.append('speed', speed.toString());
+        formData.append('auto_correct', autoCorrect.toString());
 
-        const result = await cloneVoice(formData);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/clone`, {
+          method: 'POST',
+          body: formData,
+        });
 
-        if (result.success && result.audio) {
-          const blob = new Blob(
-            [Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))],
-            { type: 'audio/wav' }
-          );
-          const url = URL.createObjectURL(blob);
-          setAudioUrl(url);
-        } else {
-          setError(result.error || 'Error generando audio');
+        if (!response.ok) {
+          throw new Error('Error generando audio');
         }
+
+        // Extraer info de corrección de headers
+        const textCorrected = response.headers.get('X-Text-Corrected');
+        if (textCorrected === 'true') {
+          const corrected = response.headers.get('X-Corrected-Text');
+          const changes = response.headers.get('X-Changes-Count');
+          if (corrected) setCorrectedText(corrected);
+          if (changes) setChangesCount(parseInt(changes));
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generando audio');
@@ -236,6 +278,29 @@ export default function TTSInterface() {
               }}
             />
 
+            {language === 'es' && (
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-primary-500/10 to-accent-500/10 rounded-xl border border-primary-500/20">
+                <input
+                  type="checkbox"
+                  id="auto-correct"
+                  checked={autoCorrect}
+                  onChange={(e) => setAutoCorrect(e.target.checked)}
+                  className="w-5 h-5 rounded accent-primary-500 cursor-pointer"
+                />
+                <label htmlFor="auto-correct" className="flex-1 cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🤖</span>
+                    <span className="font-semibold text-primary-300">
+                      Corrección automática con IA
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Corrige gramática, tildes y puntuación automáticamente sin modificar el contenido
+                  </p>
+                </label>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Select
                 label={<span className="flex items-center gap-2"><span>🌍</span><span>Idioma</span></span>}
@@ -329,32 +394,63 @@ export default function TTSInterface() {
           )}
 
           {audioUrl && (
-            <Card className="bg-gradient-to-br from-success-500/10 to-primary-500/10 border-2 border-success-500/30">
-              <CardBody className="space-y-4">
-                <h2 className="text-xl font-bold text-success-300 flex items-center gap-2">
-                  <span>🎵</span>
-                  <span>Audio generado</span>
-                </h2>
-                <audio 
-                  controls 
-                  className="w-full rounded-lg bg-dark-900/50 border border-primary-500/30"
-                  src={audioUrl}
-                >
-                  Tu navegador no soporta el elemento de audio.
-                </audio>
-                <Button
-                  as="a"
-                  href={audioUrl}
-                  download="voz_clonada.wav"
-                  color="success"
-                  variant="shadow"
-                  startContent={<span>💾</span>}
-                  className="font-semibold"
-                >
-                  Descargar Audio
-                </Button>
-              </CardBody>
-            </Card>
+            <>
+              {correctedText && changesCount > 0 && (
+                <Card className="bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-2 border-primary-500/30">
+                  <CardBody className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold text-primary-300 flex items-center gap-2">
+                        <span>🤖</span>
+                        <span>Corrección aplicada</span>
+                      </h2>
+                      <Chip color="primary" size="sm" variant="shadow">
+                        {changesCount} {changesCount === 1 ? 'cambio' : 'cambios'}
+                      </Chip>
+                    </div>
+                    <div className="grid gap-3">
+                      <div className="p-3 bg-danger-500/10 rounded-lg border border-danger-500/20">
+                        <p className="text-xs text-danger-300 font-semibold mb-1">Texto original:</p>
+                        <p className="text-sm text-slate-300">{text}</p>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <span className="text-2xl">⬇️</span>
+                      </div>
+                      <div className="p-3 bg-success-500/10 rounded-lg border border-success-500/20">
+                        <p className="text-xs text-success-300 font-semibold mb-1">Texto corregido:</p>
+                        <p className="text-sm text-slate-200 font-medium">{correctedText}</p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+
+              <Card className="bg-gradient-to-br from-success-500/10 to-primary-500/10 border-2 border-success-500/30">
+                <CardBody className="space-y-4">
+                  <h2 className="text-xl font-bold text-success-300 flex items-center gap-2">
+                    <span>🎵</span>
+                    <span>Audio generado</span>
+                  </h2>
+                  <audio 
+                    controls 
+                    className="w-full rounded-lg bg-dark-900/50 border border-primary-500/30"
+                    src={audioUrl}
+                  >
+                    Tu navegador no soporta el elemento de audio.
+                  </audio>
+                  <Button
+                    as="a"
+                    href={audioUrl}
+                    download="voz_clonada.wav"
+                    color="success"
+                    variant="shadow"
+                    startContent={<span>💾</span>}
+                    className="font-semibold"
+                  >
+                    Descargar Audio
+                  </Button>
+                </CardBody>
+              </Card>
+            </>
           )}
         </CardBody>
       </Card>

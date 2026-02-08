@@ -3,8 +3,9 @@
 // URL del backend TTS (configurable por entorno)
 const rawBackendUrl =
   process.env.TTS_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_TTS_API_URL ||
-  "http://localhost:5000";
+  "http://localhost:2500";
 
 const API_URL = rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
 
