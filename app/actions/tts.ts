@@ -1,13 +1,16 @@
 "use server";
 
-// URL del backend TTS (configurable por entorno)
+// URL del backend TTS - usa proxy local en producción
 const rawBackendUrl =
   process.env.TTS_BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_TTS_API_URL ||
   "http://localhost:2500";
 
-const API_URL = rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
+// En producción, usar el proxy API local en lugar de llamadas directas
+const API_URL = process.env.VERCEL || process.env.NODE_ENV === 'production'
+  ? '/api/proxy'
+  : rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {
