@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cloneVoice, useVoiceFromGallery, getVoices } from '@/app/actions/tts';
+import { cloneVoice, useVoiceFromGallery, getVoices, correctText } from '@/app/actions/tts';
 import { Button, Card, CardBody, Textarea, Select, SelectItem, Slider, Chip } from '@nextui-org/react';
 
 interface Voice {
@@ -26,9 +26,10 @@ export default function TTSInterface() {
   const [preloadedVoices, setPreloadedVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [usePreloadedVoice, setUsePreloadedVoice] = useState(false);
-  const [autoCorrect, setAutoCorrect] = useState(true);  // Activado por defecto
-  const [correctedText, setCorrectedText] = useState<string | null>(null);
-  const [changesCount, setChangesCount] = useState<number>(0);
+  const [correctedText, setCorrectedText] = useState('');
+  const [isTextCorrected, setIsTextCorrected] = useState(false);
+  const [changesCount, setChangesCount] = useState(0);
+  const [correctingText, setCorrectingText] = useState(false);
 
   useEffect(() => {
     loadVoices();
@@ -45,41 +46,62 @@ export default function TTSInterface() {
     }
   };
 
+  const handleCorrectText = async () => {
+    if (!text.trim()) {
+      setError('Escribe un texto para corregir');
+      return;
+    }
+
+    setCorrectingText(true);
+    setError(null);
+
+    try {
+      const result = await correctText(text);
+      
+      if (result.success) {
+        setCorrectedText(result.corrected);
+        setChangesCount(result.changes_count);
+        setIsTextCorrected(true);
+        
+        if (result.changes_count === 0) {
+          setError('✅ El texto no necesita correcciones');
+        }
+      } else {
+        setError(result.error || 'Error al corregir el texto');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al corregir el texto');
+    } finally {
+      setCorrectingText(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setCorrectedText(null);
-    setChangesCount(0);
+
+    // Usar texto corregido si está disponible, sino el texto original
+    const finalText = isTextCorrected && correctedText ? correctedText : text;
 
     try {
       if (usePreloadedVoice && selectedVoiceId) {
         // Usar voz pre-definida
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/voices/${selectedVoiceId}/use`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_TTS_API_URL}/voices/${selectedVoiceId}/use`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            text,
+            text: finalText,
             language,
             temperature,
             speed,
-            auto_correct: autoCorrect
           }),
         });
 
         if (!response.ok) {
           throw new Error('Error generando audio');
-        }
-
-        // Extraer info de corrección de headers
-        const textCorrected = response.headers.get('X-Text-Corrected');
-        if (textCorrected === 'true') {
-          const corrected = response.headers.get('X-Corrected-Text');
-          const changes = response.headers.get('X-Changes-Count');
-          if (corrected) setCorrectedText(corrected);
-          if (changes) setChangesCount(parseInt(changes));
         }
 
         const blob = await response.blob();
@@ -95,11 +117,10 @@ export default function TTSInterface() {
 
         const formData = new FormData();
         formData.append('audio', audioFile);
-        formData.append('text', text);
+        formData.append('text', finalText);
         formData.append('language', language);
         formData.append('temperature', temperature.toString());
         formData.append('speed', speed.toString());
-        formData.append('auto_correct', autoCorrect.toString());
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/clone`, {
           method: 'POST',
@@ -108,15 +129,6 @@ export default function TTSInterface() {
 
         if (!response.ok) {
           throw new Error('Error generando audio');
-        }
-
-        // Extraer info de corrección de headers
-        const textCorrected = response.headers.get('X-Text-Corrected');
-        if (textCorrected === 'true') {
-          const corrected = response.headers.get('X-Corrected-Text');
-          const changes = response.headers.get('X-Changes-Count');
-          if (corrected) setCorrectedText(corrected);
-          if (changes) setChangesCount(parseInt(changes));
         }
 
         const blob = await response.blob();
@@ -279,26 +291,42 @@ export default function TTSInterface() {
             />
 
             {language === 'es' && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-primary-500/10 to-accent-500/10 rounded-xl border border-primary-500/20">
-                <input
-                  type="checkbox"
-                  id="auto-correct"
-                  checked={autoCorrect}
-                  onChange={(e) => setAutoCorrect(e.target.checked)}
-                  className="w-5 h-5 rounded accent-primary-500 cursor-pointer"
-                />
-                <label htmlFor="auto-correct" className="flex-1 cursor-pointer select-none">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🤖</span>
-                    <span className="font-semibold text-primary-300">
-                      Corrección automática con IA
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Corrige gramática, tildes y puntuación automáticamente sin modificar el contenido
-                  </p>
-                </label>
+              <div className="flex gap-3 items-center">
+                <Button
+                  color="secondary"
+                  variant="flat"
+                  onPress={handleCorrectText}
+                  isLoading={correctingText}
+                  isDisabled={!text.trim() || loading}
+                  startContent={!correctingText && <span>🔍</span>}
+                >
+                  {correctingText ? 'Corrigiendo...' : 'Corregir Texto'}
+                </Button>
+                {isTextCorrected && changesCount > 0 && (
+                  <Chip color="success" variant="flat">
+                    ✅ {changesCount} {changesCount === 1 ? 'corrección aplicada' : 'correcciones aplicadas'}
+                  </Chip>
+                )}
+                {isTextCorrected && changesCount === 0 && (
+                  <Chip color="primary" variant="flat">
+                    ℹ️ No se encontraron errores
+                  </Chip>
+                )}
               </div>
+            )}
+
+            {isTextCorrected && correctedText && (
+              <Textarea
+                label={<span className="flex items-center gap-2"><span>✍️</span><span>Texto Corregido (Editable)</span></span>}
+                placeholder="Texto corregido..."
+                value={correctedText}
+                onValueChange={setCorrectedText}
+                minRows={4}
+                classNames={{
+                  input: "text-slate-200",
+                  inputWrapper: "border-2 border-success-500/50 bg-success-500/5"
+                }}
+              />
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -395,35 +423,6 @@ export default function TTSInterface() {
 
           {audioUrl && (
             <>
-              {correctedText && changesCount > 0 && (
-                <Card className="bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-2 border-primary-500/30">
-                  <CardBody className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-bold text-primary-300 flex items-center gap-2">
-                        <span>🤖</span>
-                        <span>Corrección aplicada</span>
-                      </h2>
-                      <Chip color="primary" size="sm" variant="shadow">
-                        {changesCount} {changesCount === 1 ? 'cambio' : 'cambios'}
-                      </Chip>
-                    </div>
-                    <div className="grid gap-3">
-                      <div className="p-3 bg-danger-500/10 rounded-lg border border-danger-500/20">
-                        <p className="text-xs text-danger-300 font-semibold mb-1">Texto original:</p>
-                        <p className="text-sm text-slate-300">{text}</p>
-                      </div>
-                      <div className="flex items-center justify-center">
-                        <span className="text-2xl">⬇️</span>
-                      </div>
-                      <div className="p-3 bg-success-500/10 rounded-lg border border-success-500/20">
-                        <p className="text-xs text-success-300 font-semibold mb-1">Texto corregido:</p>
-                        <p className="text-sm text-slate-200 font-medium">{correctedText}</p>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              )}
-
               <Card className="bg-gradient-to-br from-success-500/10 to-primary-500/10 border-2 border-success-500/30">
                 <CardBody className="space-y-4">
                   <h2 className="text-xl font-bold text-success-300 flex items-center gap-2">
