@@ -1,18 +1,21 @@
 /**
  * Configuración del API backend
- * En producción usa proxy local, en desarrollo usa URL directa
+ * Usa api-voz.cloudmusic.cl en producción y local
  */
 
 export const getApiUrl = () => {
-  // En producción, usar el subdominio con HTTPS
+  // Verificar si estamos en el navegador
   if (typeof window !== 'undefined') {
+    // En producción (HTTPS), usar el dominio con HTTPS
     if (window.location.protocol === 'https:') {
       return 'https://api-voz.cloudmusic.cl';
     }
+    // En desarrollo local, usar HTTP
+    return 'http://api-voz.cloudmusic.cl';
   }
   
-  // En desarrollo, usar URL directa al servidor con GPU
-  return process.env.NEXT_PUBLIC_TTS_API_URL || 'http://192.168.30.254:4000';
+  // En servidor (SSR), usar HTTP por defecto
+  return 'http://api-voz.cloudmusic.cl';
 };
 
 export const API_URL = getApiUrl();
