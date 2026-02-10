@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { cloneVoice, useVoiceFromGallery, getVoices, correctText } from '@/app/actions/tts';
 import { Button, Card, CardBody, Textarea, Select, SelectItem, Slider, Chip } from '@nextui-org/react';
-import { getApiUrl } from '@/lib/config';
 
 interface Voice {
   id: string;
@@ -88,8 +87,7 @@ export default function TTSInterface() {
     try {
       if (usePreloadedVoice && selectedVoiceId) {
         // Usar voz pre-definida
-        const apiUrl = getApiUrl();
-        const response = await fetch(`${apiUrl}/voices/${selectedVoiceId}/use`, {
+        const response = await fetch(`/api/proxy/voices/${selectedVoiceId}/use`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -124,7 +122,7 @@ export default function TTSInterface() {
         formData.append('temperature', temperature.toString());
         formData.append('speed', speed.toString());
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/clone`, {
+        const response = await fetch(`/api/proxy/clone`, {
           method: 'POST',
           body: formData,
         });

@@ -7,9 +7,22 @@ const rawBackendUrl =
   process.env.NEXT_PUBLIC_TTS_API_URL ||
   "http://localhost:2500";
 
+// Obtener la URL base del servidor para Server Actions
+function getBaseUrl() {
+  // En Server Actions necesitamos la URL completa
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  // En servidor, usar localhost o la variable de entorno
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return `http://localhost:${process.env.PORT || 3004}`;
+}
+
 // En producción, usar el proxy API local en lugar de llamadas directas
 const API_URL = process.env.VERCEL || process.env.NODE_ENV === 'production'
-  ? '/api/proxy'
+  ? `${getBaseUrl()}/api/proxy`
   : rawBackendUrl.replace(/\/\*$/, "").replace(/\/$/, "");
 
 export async function generateSpeech(text: string, language: string = "es") {

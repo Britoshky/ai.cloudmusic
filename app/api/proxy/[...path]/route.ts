@@ -10,6 +10,8 @@ export async function GET(
   const path = resolvedParams.path.join('/');
   const url = `${BACKEND_URL}/${path}`;
   
+  console.log('GET Proxy URL:', url);
+  
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -36,6 +38,8 @@ export async function POST(
   const resolvedParams = await params;
   const path = resolvedParams.path.join('/');
   const url = `${BACKEND_URL}/${path}`;
+  
+  console.log('POST Proxy URL:', url);
   
   try {
     const body = await request.json();
@@ -80,6 +84,8 @@ export async function DELETE(
   const resolvedParams = await params;
   const path = resolvedParams.path.join('/');
   const url = `${BACKEND_URL}/${path}`;
+  
+  console.log('DELETE Proxy URL:', url);
   
   try {
     const response = await fetch(url, {
