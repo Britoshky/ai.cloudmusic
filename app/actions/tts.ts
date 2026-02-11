@@ -1,7 +1,7 @@
 "use server";
 
-// URL del backend TTS - usa api-voz.cloudmusic.cl directamente
-const API_URL = process.env.TTS_BACKEND_URL || 'http://api-voz.cloudmusic.cl';
+// URL del backend TTS - Server Actions usan IP directa (sin CORS)
+const API_URL = process.env.TTS_BACKEND_URL || 'http://192.168.30.254:4000';
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {
