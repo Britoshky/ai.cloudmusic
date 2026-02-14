@@ -144,35 +144,6 @@ export async function addVoice(formData: FormData) {
   }
 }
 
-// Corregir texto automáticamente
-export async function correctText(text: string) {
-  try {
-    const response = await fetch(`${API_URL}/correct-text`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Error corrigiendo texto');
-    }
-
-    const data = await response.json();
-    return {
-      success: true,
-      ...data,
-    };
-  } catch (error) {
-    console.error("Error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-    };
-  }
-}
-
 // Eliminar voz
 export async function deleteVoice(voiceId: string) {
   try {

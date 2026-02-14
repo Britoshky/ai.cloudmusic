@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cloneVoice, useVoiceFromGallery, getVoices, correctText } from '@/app/actions/tts';
+import { cloneVoice, useVoiceFromGallery, getVoices } from '@/app/actions/tts';
 import { Button, Card, CardBody, Textarea, Select, SelectItem, Slider, Chip } from '@nextui-org/react';
 import { getApiUrl } from '@/lib/config';
 
@@ -27,10 +27,6 @@ export default function TTSInterface() {
   const [preloadedVoices, setPreloadedVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [usePreloadedVoice, setUsePreloadedVoice] = useState(false);
-  const [correctedText, setCorrectedText] = useState('');
-  const [isTextCorrected, setIsTextCorrected] = useState(false);
-  const [changesCount, setChangesCount] = useState(0);
-  const [correctingText, setCorrectingText] = useState(false);
 
   useEffect(() => {
     loadVoices();
@@ -47,43 +43,10 @@ export default function TTSInterface() {
     }
   };
 
-  const handleCorrectText = async () => {
-    if (!text.trim()) {
-      setError('Escribe un texto para corregir');
-      return;
-    }
-
-    setCorrectingText(true);
-    setError(null);
-
-    try {
-      const result = await correctText(text);
-      
-      if (result.success) {
-        setCorrectedText(result.corrected);
-        setChangesCount(result.changes_count);
-        setIsTextCorrected(true);
-        
-        if (result.changes_count === 0) {
-          setError('✅ El texto no necesita correcciones');
-        }
-      } else {
-        setError(result.error || 'Error al corregir el texto');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al corregir el texto');
-    } finally {
-      setCorrectingText(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Usar texto corregido si está disponible, sino el texto original
-    const finalText = isTextCorrected && correctedText ? correctedText : text;
 
     try {
       if (usePreloadedVoice && selectedVoiceId) {
@@ -95,7 +58,7 @@ export default function TTSInterface() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            text: finalText,
+            text,
             language,
             temperature,
             speed,
@@ -119,7 +82,7 @@ export default function TTSInterface() {
 
         const formData = new FormData();
         formData.append('audio', audioFile);
-        formData.append('text', finalText);
+        formData.append('text', text);
         formData.append('language', language);
         formData.append('temperature', temperature.toString());
         formData.append('speed', speed.toString());
@@ -292,45 +255,6 @@ export default function TTSInterface() {
                 inputWrapper: "border-2 border-primary-500/30 bg-dark-900/50"
               }}
             />
-
-            {language === 'es' && (
-              <div className="flex gap-3 items-center">
-                <Button
-                  color="secondary"
-                  variant="flat"
-                  onPress={handleCorrectText}
-                  isLoading={correctingText}
-                  isDisabled={!text.trim() || loading}
-                  startContent={!correctingText && <span>🔍</span>}
-                >
-                  {correctingText ? 'Corrigiendo...' : 'Corregir Texto'}
-                </Button>
-                {isTextCorrected && changesCount > 0 && (
-                  <Chip color="success" variant="flat">
-                    ✅ {changesCount} {changesCount === 1 ? 'corrección aplicada' : 'correcciones aplicadas'}
-                  </Chip>
-                )}
-                {isTextCorrected && changesCount === 0 && (
-                  <Chip color="primary" variant="flat">
-                    ℹ️ No se encontraron errores
-                  </Chip>
-                )}
-              </div>
-            )}
-
-            {isTextCorrected && correctedText && (
-              <Textarea
-                label={<span className="flex items-center gap-2"><span>✍️</span><span>Texto Corregido (Editable)</span></span>}
-                placeholder="Texto corregido..."
-                value={correctedText}
-                onValueChange={setCorrectedText}
-                minRows={4}
-                classNames={{
-                  input: "text-slate-200",
-                  inputWrapper: "border-2 border-success-500/50 bg-success-500/5"
-                }}
-              />
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Select
