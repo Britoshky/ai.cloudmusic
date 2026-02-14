@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cloneVoice, useVoiceFromGallery, getVoices } from '@/app/actions/tts';
 import { Button, Card, CardBody, Textarea, Select, SelectItem, Slider, Chip } from '@nextui-org/react';
 import { getApiUrl } from '@/lib/config';
 
@@ -27,16 +26,57 @@ export default function TTSInterface() {
   const [preloadedVoices, setPreloadedVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [usePreloadedVoice, setUsePreloadedVoice] = useState(false);
+  const [clientId, setClientId] = useState<string>('');
 
   useEffect(() => {
-    loadVoices();
+    if (typeof window !== 'undefined') {
+      const storedId = localStorage.getItem('tts_client_id');
+      if (storedId) {
+        setClientId(storedId);
+      } else {
+        const generatedId = crypto.randomUUID();
+        localStorage.setItem('tts_client_id', generatedId);
+        setClientId(generatedId);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (clientId) {
+      loadVoices();
+    }
+  }, [clientId]);
+
+  const getApiErrorMessage = async (response: Response, fallback: string) => {
+    try {
+      const data = await response.json();
+      if (response.status === 429) {
+        return data.error || 'Límite de 10 peticiones alcanzado para este usuario';
+      }
+      return data.error || fallback;
+    } catch {
+      return response.status === 429
+        ? 'Límite de 10 peticiones alcanzado para este usuario'
+        : fallback;
+    }
+  };
 
   const loadVoices = async () => {
     try {
-      const result = await getVoices();
-      if (result.success) {
-        setPreloadedVoices(result.preloaded_voices);
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/voices`, {
+        headers: {
+          ...(clientId ? { 'X-User-Id': clientId } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await getApiErrorMessage(response, 'Error obteniendo voces'));
+      }
+
+      const data = await response.json();
+      if (data?.preloaded_voices) {
+        setPreloadedVoices(data.preloaded_voices);
       }
     } catch (error) {
       console.error('Error loading voices:', error);
@@ -56,6 +96,7 @@ export default function TTSInterface() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(clientId ? { 'X-User-Id': clientId } : {}),
           },
           body: JSON.stringify({
             text,
@@ -66,7 +107,7 @@ export default function TTSInterface() {
         });
 
         if (!response.ok) {
-          throw new Error('Error generando audio');
+          throw new Error(await getApiErrorMessage(response, 'Error generando audio'));
         }
 
         const blob = await response.blob();
@@ -90,11 +131,14 @@ export default function TTSInterface() {
         const apiUrl = getApiUrl();
         const response = await fetch(`${apiUrl}/clone`, {
           method: 'POST',
+          headers: {
+            ...(clientId ? { 'X-User-Id': clientId } : {}),
+          },
           body: formData,
         });
 
         if (!response.ok) {
-          throw new Error('Error generando audio');
+          throw new Error(await getApiErrorMessage(response, 'Error generando audio'));
         }
 
         const blob = await response.blob();

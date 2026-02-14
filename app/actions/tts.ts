@@ -3,6 +3,20 @@
 // URL del backend TTS - Server Actions usan IP directa (sin CORS)
 const API_URL = process.env.TTS_BACKEND_URL || 'http://192.168.30.254:4000';
 
+async function getErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+    if (response.status === 429) {
+      return data.error || 'Límite de 10 peticiones alcanzado para este usuario';
+    }
+    return data.error || fallback;
+  } catch {
+    return response.status === 429
+      ? 'Límite de 10 peticiones alcanzado para este usuario'
+      : fallback;
+  }
+}
+
 export async function generateSpeech(text: string, language: string = "es") {
   try {
     const response = await fetch(`${API_URL}/tts`, {
@@ -17,7 +31,7 @@ export async function generateSpeech(text: string, language: string = "es") {
     });
 
     if (!response.ok) {
-      throw new Error("Error generando audio");
+      throw new Error(await getErrorMessage(response, "Error generando audio"));
     }
 
     const blob = await response.blob();
@@ -44,8 +58,7 @@ export async function cloneVoice(formData: FormData) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error clonando voz");
+      throw new Error(await getErrorMessage(response, "Error clonando voz"));
     }
 
     const blob = await response.blob();
@@ -85,7 +98,7 @@ export async function useVoiceFromGallery(
   });
 
   if (!response.ok) {
-    throw new Error('Error usando voz de la galería');
+    throw new Error(await getErrorMessage(response, 'Error usando voz de la galería'));
   }
 
   return await response.blob();
@@ -97,7 +110,7 @@ export async function getVoices() {
     const response = await fetch(`${API_URL}/voices`);
     
     if (!response.ok) {
-      throw new Error('Error obteniendo voces');
+      throw new Error(await getErrorMessage(response, 'Error obteniendo voces'));
     }
     
     const data = await response.json();
@@ -126,8 +139,7 @@ export async function addVoice(formData: FormData) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error agregando voz');
+      throw new Error(await getErrorMessage(response, 'Error agregando voz'));
     }
 
     const data = await response.json();
@@ -152,7 +164,7 @@ export async function deleteVoice(voiceId: string) {
     });
 
     if (!response.ok) {
-      throw new Error('Error eliminando voz');
+      throw new Error(await getErrorMessage(response, 'Error eliminando voz'));
     }
 
     return {
