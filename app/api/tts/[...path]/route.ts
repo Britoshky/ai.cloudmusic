@@ -1,100 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
 
 const BACKEND_URL = (process.env.TTS_BACKEND_URL || "http://localhost:4000").replace(/\/$/, "");
-const FRONTEND_KEY_ID = process.env.FRONTEND_KEY_ID || "tts-frontend";
 
-// Soporta dos formas de configurar la clave:
-// 1. FRONTEND_PRIVATE_KEY_PEM: directamente (multiline)
-// 2. FRONTEND_PRIVATE_KEY_PEM_B64: base64 encoded (para Coolify)
-let FRONTEND_PRIVATE_KEY_PEM = process.env.FRONTEND_PRIVATE_KEY_PEM || "";
-if (!FRONTEND_PRIVATE_KEY_PEM && process.env.FRONTEND_PRIVATE_KEY_PEM_B64) {
-  try {
-    FRONTEND_PRIVATE_KEY_PEM = Buffer.from(process.env.FRONTEND_PRIVATE_KEY_PEM_B64, "base64").toString("utf-8");
-  } catch (error) {
-    console.error("Error decoding FRONTEND_PRIVATE_KEY_PEM_B64:", error);
-  }
-}
-
-function getPrivateKey() {
-  if (!FRONTEND_PRIVATE_KEY_PEM) return null;
-  
-  try {
-    // Normalizar: convertir \n literales a saltos de línea reales
-    let pem = FRONTEND_PRIVATE_KEY_PEM
-      .replace(/\\n/g, "\n")        // Si vienen como \n literal
-      .replace(/\\r/g, "\r")        // Si vienen como \r literal
-      .replace(/\\t/g, "\t")        // Si vienen como \t literal
-      .trim();
-    
-    // Validar que el PEM sea válido
-    if (!pem.includes("-----BEGIN") || !pem.includes("-----END")) {
-      throw new Error("PEM inválido: falta BEGIN/END markers");
-    }
-    
-    // Crear clave privada con formato explícito
-    return crypto.createPrivateKey({
-      key: pem,
-      format: "pem"
-    });
-  } catch (error) {
-    throw new Error(`Error cargando clave privada: ${error instanceof Error ? error.message : "desconocido"}`);
-  }
-}
-
-function buildSignature(method: string, path: string, timestamp: string, nonce: string, body: ArrayBuffer) {
-  const bodyHash = crypto.createHash("sha256").update(new Uint8Array(body)).digest("hex");
-  const payload = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}`;
-  
-  let privateKey;
-  try {
-    privateKey = getPrivateKey();
-  } catch (error) {
-    throw new Error(`Error obteniendo clave privada: ${error instanceof Error ? error.message : "desconocido"}`);
-  }
-  
-  if (!privateKey) {
-    throw new Error("FRONTEND_PRIVATE_KEY_PEM no configurado en frontend");
-  }
-  
-  try {
-    // Para Ed25519, crypto.sign() retorna la firma directamente
-    const signature = crypto.sign(null, Buffer.from(payload, "utf-8"), privateKey);
-    return signature.toString("base64");
-  } catch (error) {
-    throw new Error(`Error firmando request: ${error instanceof Error ? error.message : "desconocido"}`);
-  }
-}
-
-async function signedFetch(path: string, init: {
+async function simpleFetch(path: string, init: {
   method: string;
   body?: ArrayBuffer;
   contentType?: string | null;
   userId?: string | null;
   turnstileToken?: string | null;
 }) {
-  try {
-    getPrivateKey();
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "FRONTEND_PRIVATE_KEY_PEM inválido" }, { status: 500 });
-  }
-
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomUUID();
-  const body = init.body ?? new ArrayBuffer(0);
-  let signature: string;
-  try {
-    signature = buildSignature(init.method, path, timestamp, nonce, body);
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Error firmando solicitud" }, { status: 500 });
-  }
-
-  const headers: Record<string, string> = {
-    "X-Frontend-Key-Id": FRONTEND_KEY_ID,
-    "X-Frontend-Timestamp": timestamp,
-    "X-Frontend-Nonce": nonce,
-    "X-Frontend-Signature": signature,
-  };
+  const headers: Record<string, string> = {};
 
   if (init.contentType) headers["Content-Type"] = init.contentType;
   if (init.userId) headers["X-User-Id"] = init.userId;
@@ -103,7 +18,7 @@ async function signedFetch(path: string, init: {
   const response = await fetch(`${BACKEND_URL}${path}`, {
     method: init.method,
     headers,
-    body: ["GET", "HEAD"].includes(init.method) ? undefined : body,
+    body: ["GET", "HEAD"].includes(init.method) ? undefined : init.body,
     cache: "no-store",
   });
 
@@ -118,7 +33,7 @@ async function waitJobResult(statusUrl: string, resultUrl: string, common: {
   const timeoutMs = 20 * 60 * 1000;
 
   while (Date.now() - start < timeoutMs) {
-    const statusRes = await signedFetch(statusUrl, {
+    const statusRes = await simpleFetch(statusUrl, {
       method: "GET",
       userId: common.userId,
     });
@@ -129,7 +44,7 @@ async function waitJobResult(statusUrl: string, resultUrl: string, common: {
     }
 
     if (statusData.status === "completed") {
-      const resultRes = await signedFetch(resultUrl, {
+      const resultRes = await simpleFetch(resultUrl, {
         method: "GET",
         userId: common.userId,
       });
@@ -180,7 +95,7 @@ async function handleProxy(req: NextRequest, params: { path?: string[] }) {
     contentType = req.headers.get("content-type");
   }
 
-  const backendResponse = await signedFetch(finalPath, {
+  const backendResponse = await simpleFetch(finalPath, {
     method,
     body: rawBody,
     contentType,
