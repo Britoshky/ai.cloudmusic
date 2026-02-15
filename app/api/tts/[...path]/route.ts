@@ -3,23 +3,67 @@ import crypto from "node:crypto";
 
 const BACKEND_URL = (process.env.TTS_BACKEND_URL || "http://localhost:4000").replace(/\/$/, "");
 const FRONTEND_KEY_ID = process.env.FRONTEND_KEY_ID || "tts-frontend";
-const FRONTEND_PRIVATE_KEY_PEM = process.env.FRONTEND_PRIVATE_KEY_PEM || "";
+
+// Soporta dos formas de configurar la clave:
+// 1. FRONTEND_PRIVATE_KEY_PEM: directamente (multiline)
+// 2. FRONTEND_PRIVATE_KEY_PEM_B64: base64 encoded (para Coolify)
+let FRONTEND_PRIVATE_KEY_PEM = process.env.FRONTEND_PRIVATE_KEY_PEM || "";
+if (!FRONTEND_PRIVATE_KEY_PEM && process.env.FRONTEND_PRIVATE_KEY_PEM_B64) {
+  try {
+    FRONTEND_PRIVATE_KEY_PEM = Buffer.from(process.env.FRONTEND_PRIVATE_KEY_PEM_B64, "base64").toString("utf-8");
+  } catch (error) {
+    console.error("Error decoding FRONTEND_PRIVATE_KEY_PEM_B64:", error);
+  }
+}
 
 function getPrivateKey() {
   if (!FRONTEND_PRIVATE_KEY_PEM) return null;
-  const pem = FRONTEND_PRIVATE_KEY_PEM.replace(/\\n/g, "\n");
-  return crypto.createPrivateKey(pem);
+  
+  try {
+    // Normalizar: convertir \n literales a saltos de línea reales
+    let pem = FRONTEND_PRIVATE_KEY_PEM
+      .replace(/\\n/g, "\n")        // Si vienen como \n literal
+      .replace(/\\r/g, "\r")        // Si vienen como \r literal
+      .replace(/\\t/g, "\t")        // Si vienen como \t literal
+      .trim();
+    
+    // Validar que el PEM sea válido
+    if (!pem.includes("-----BEGIN") || !pem.includes("-----END")) {
+      throw new Error("PEM inválido: falta BEGIN/END markers");
+    }
+    
+    // Crear clave privada con formato explícito
+    return crypto.createPrivateKey({
+      key: pem,
+      format: "pem"
+    });
+  } catch (error) {
+    throw new Error(`Error cargando clave privada: ${error instanceof Error ? error.message : "desconocido"}`);
+  }
 }
 
 function buildSignature(method: string, path: string, timestamp: string, nonce: string, body: ArrayBuffer) {
   const bodyHash = crypto.createHash("sha256").update(new Uint8Array(body)).digest("hex");
   const payload = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}`;
-  const privateKey = getPrivateKey();
+  
+  let privateKey;
+  try {
+    privateKey = getPrivateKey();
+  } catch (error) {
+    throw new Error(`Error obteniendo clave privada: ${error instanceof Error ? error.message : "desconocido"}`);
+  }
+  
   if (!privateKey) {
     throw new Error("FRONTEND_PRIVATE_KEY_PEM no configurado en frontend");
   }
-  const signature = crypto.sign(null, Buffer.from(payload, "utf-8"), privateKey);
-  return signature.toString("base64");
+  
+  try {
+    // Para Ed25519, crypto.sign() retorna la firma directamente
+    const signature = crypto.sign(null, Buffer.from(payload, "utf-8"), privateKey);
+    return signature.toString("base64");
+  } catch (error) {
+    throw new Error(`Error firmando request: ${error instanceof Error ? error.message : "desconocido"}`);
+  }
 }
 
 async function signedFetch(path: string, init: {
