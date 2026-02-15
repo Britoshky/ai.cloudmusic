@@ -20,7 +20,16 @@ const jsonLd = {
   provider: {
     "@type": "Organization",
     name: "CloudMusic.cl",
-    url: "https://ai.cloudmusic.cl",
+    url: "https://cloudmusic.cl",
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        telephone: "+56956197415",
+        contactType: "sales",
+        areaServed: "CL",
+        availableLanguage: ["es"],
+      },
+    ],
   },
   offers: {
     "@type": "Offer",
@@ -86,6 +95,23 @@ export default function Home() {
         <div className="mt-12 text-center text-default-500 text-sm">
           <div className="inline-block px-4 py-2 rounded-full bg-default-100/50 backdrop-blur-sm border border-default-200">
             Powered by XTTS-v2 • Open Source AI Technology
+          </div>
+
+          <div className="mt-4 text-xs text-default-500">
+            <a
+              href="https://cloudmusic.cl"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              https://cloudmusic.cl
+            </a>
+            <span className="mx-2">•</span>
+            <span>Héctor Brito — Ingeniero en informática</span>
+            <span className="mx-2">•</span>
+            <a href="tel:+56956197415" className="underline underline-offset-4">
+              +56 9 5619 7415
+            </a>
           </div>
         </div>
       </div>

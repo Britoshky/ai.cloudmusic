@@ -1,7 +1,7 @@
 "use server";
 
-// URL del backend TTS - Server Actions usan IP directa (sin CORS)
-const API_URL = process.env.TTS_BACKEND_URL || 'http://192.168.30.254:4000';
+// Usar proxy interno para aplicar firma y protecciones del backend
+const API_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3004';
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -19,7 +19,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 
 export async function generateSpeech(text: string, language: string = "es") {
   try {
-    const response = await fetch(`${API_URL}/tts`, {
+    const response = await fetch(`${API_URL}/api/tts/tts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -52,7 +52,7 @@ export async function generateSpeech(text: string, language: string = "es") {
 
 export async function cloneVoice(formData: FormData) {
   try {
-    const response = await fetch(`${API_URL}/clone`, {
+    const response = await fetch(`${API_URL}/api/tts/clone`, {
       method: "POST",
       body: formData,
     });
@@ -84,7 +84,7 @@ export async function useVoiceFromGallery(
   temperature: number,
   speed: number
 ) {
-  const response = await fetch(`${API_URL}/voices/${voiceId}/use`, {
+  const response = await fetch(`${API_URL}/api/tts/voices/${voiceId}/use`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export async function useVoiceFromGallery(
 // Obtener voces disponibles
 export async function getVoices() {
   try {
-    const response = await fetch(`${API_URL}/voices`);
+    const response = await fetch(`${API_URL}/api/tts/voices`);
     
     if (!response.ok) {
       throw new Error(await getErrorMessage(response, 'Error obteniendo voces'));
@@ -133,7 +133,7 @@ export async function getVoices() {
 // Agregar nueva voz
 export async function addVoice(formData: FormData) {
   try {
-    const response = await fetch(`${API_URL}/voices`, {
+    const response = await fetch(`${API_URL}/api/tts/voices`, {
       method: 'POST',
       body: formData,
     });
@@ -159,7 +159,7 @@ export async function addVoice(formData: FormData) {
 // Eliminar voz
 export async function deleteVoice(voiceId: string) {
   try {
-    const response = await fetch(`${API_URL}/voices/${voiceId}`, {
+    const response = await fetch(`${API_URL}/api/tts/voices/${voiceId}`, {
       method: 'DELETE',
     });
 

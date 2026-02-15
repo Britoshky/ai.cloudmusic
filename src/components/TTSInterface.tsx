@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Card, CardBody, Textarea, Select, SelectItem, Slider, Chip } from '@nextui-org/react';
+import Script from 'next/script';
 import { getApiUrl } from '@/lib/config';
 
 interface Voice {
@@ -27,6 +28,8 @@ export default function TTSInterface() {
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [usePreloadedVoice, setUsePreloadedVoice] = useState(false);
   const [clientId, setClientId] = useState<string>('');
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -40,6 +43,20 @@ export default function TTSInterface() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+
+    (window as any).onTurnstileSuccess = (token: string) => {
+      setTurnstileToken(token);
+    };
+    (window as any).onTurnstileExpired = () => {
+      setTurnstileToken('');
+    };
+    (window as any).onTurnstileError = () => {
+      setTurnstileToken('');
+    };
+  }, [turnstileSiteKey]);
 
   useEffect(() => {
     if (clientId) {
@@ -89,6 +106,10 @@ export default function TTSInterface() {
     setError(null);
 
     try {
+      if (turnstileSiteKey && !turnstileToken) {
+        throw new Error('Completa el desafío anti-bots (Turnstile) antes de generar audio');
+      }
+
       if (usePreloadedVoice && selectedVoiceId) {
         // Usar voz pre-definida
         const apiUrl = getApiUrl();
@@ -97,6 +118,7 @@ export default function TTSInterface() {
           headers: {
             'Content-Type': 'application/json',
             ...(clientId ? { 'X-User-Id': clientId } : {}),
+            ...(turnstileToken ? { 'X-Turnstile-Token': turnstileToken } : {}),
           },
           body: JSON.stringify({
             text,
@@ -133,6 +155,7 @@ export default function TTSInterface() {
           method: 'POST',
           headers: {
             ...(clientId ? { 'X-User-Id': clientId } : {}),
+            ...(turnstileToken ? { 'X-Turnstile-Token': turnstileToken } : {}),
           },
           body: formData,
         });
@@ -154,6 +177,21 @@ export default function TTSInterface() {
 
   return (
     <div className="max-w-6xl mx-auto">
+
+      {turnstileSiteKey && (
+        <>
+          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+          <div className="mb-6 flex justify-center">
+            <div
+              className="cf-turnstile"
+              data-sitekey={turnstileSiteKey}
+              data-callback="onTurnstileSuccess"
+              data-expired-callback="onTurnstileExpired"
+              data-error-callback="onTurnstileError"
+            />
+          </div>
+        </>
+      )}
       
       <Card className="backdrop-blur-xl border border-primary-500/20">
         <CardBody className="p-8 space-y-6">
